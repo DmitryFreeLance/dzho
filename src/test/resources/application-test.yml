@@ -1,0 +1,25 @@
+spring:
+  datasource:
+    url: jdbc:sqlite:file:testdb?mode=memory&cache=shared
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      maximum-pool-size: 1
+  sql:
+    init:
+      mode: always
+
+vk:
+  group-id: 12345
+  access-token: test-token
+  confirmation-code: confirm-me
+  callback-secret: callback-secret
+  public-group-id: 236069574
+  api-base-url: http://localhost:1
+  api-version: 5.199
+  write-link-base: https://vk.com/write-236069574
+  tracked-posts: 101=Арт-стол Бурятии
+  reply-template: 'Спасибо! Ваш голос принят за "{artTable}". Чтобы получить номер подарка, напишите боту: {link}'
+  duplicate-template: 'Ваш голос уже был принят ранее. Если нужно, напишите боту: {link}'
+  fallback-template: 'Спасибо! Ваш голос принят за "{artTable}". Чтобы получить номер подарка, откройте {groupMention} и напишите нам в сообщения.'
+  reply-on-duplicate: false
+  enable-hyperlink-fallback: true

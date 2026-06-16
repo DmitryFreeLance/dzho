@@ -1,0 +1,40 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: vk-comment-bot
+  datasource:
+    url: jdbc:sqlite:${SQLITE_PATH:/data/vk-bot.db}
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      maximum-pool-size: 1
+      minimum-idle: 1
+      connection-test-query: SELECT 1
+  sql:
+    init:
+      mode: always
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: false
+
+logging:
+  level:
+    root: INFO
+    ru.dzho.vkbot: INFO
+
+vk:
+  group-id: ${VK_GROUP_ID:0}
+  access-token: ${VK_ACCESS_TOKEN:}
+  confirmation-code: ${VK_CONFIRMATION_CODE:}
+  callback-secret: ${VK_CALLBACK_SECRET:}
+  public-group-id: ${VK_PUBLIC_GROUP_ID:${VK_GROUP_ID:0}}
+  api-base-url: ${VK_API_BASE_URL:https://api.vk.com}
+  api-version: ${VK_API_VERSION:5.199}
+  write-link-base: ${VK_WRITE_LINK_BASE:https://vk.com/write-236069574}
+  tracked-posts: ${VK_TRACKED_POSTS:}
+  reply-template: '${VK_REPLY_TEMPLATE:Спасибо! Ваш голос принят за "{artTable}". Чтобы получить номер подарка, напишите боту: {link}}'
+  duplicate-template: '${VK_DUPLICATE_TEMPLATE:Ваш голос уже был принят ранее. Если нужно, напишите боту: {link}}'
+  fallback-template: '${VK_FALLBACK_TEMPLATE:Спасибо! Ваш голос принят за "{artTable}". Чтобы получить номер подарка, откройте {groupMention} и напишите нам в сообщения.}'
+  reply-on-duplicate: ${VK_REPLY_ON_DUPLICATE:false}
+  enable-hyperlink-fallback: ${VK_ENABLE_HYPERLINK_FALLBACK:true}
