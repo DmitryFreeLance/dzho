@@ -13,24 +13,36 @@ import java.util.Map;
 @Validated
 @ConfigurationProperties(prefix = "vk")
 public record VkBotProperties(
+        @NotNull VkEventSource eventSource,
         @Positive long groupId,
         @NotBlank String accessToken,
-        @NotBlank String confirmationCode,
+        String confirmationCode,
         String callbackSecret,
         long publicGroupId,
         @NotBlank String apiBaseUrl,
         @NotBlank String apiVersion,
+        @Positive int longPollWaitSeconds,
         @NotBlank String writeLinkBase,
         String trackedPosts,
         @NotBlank String replyTemplate,
         @NotBlank String duplicateTemplate,
         @NotBlank String fallbackTemplate,
+        @NotBlank String giftIssuedTemplate,
+        @NotBlank String giftRepeatTemplate,
+        @NotBlank String commentRequiredTemplate,
+        @NotBlank String giftsExhaustedTemplate,
+        @NotBlank String subscriptionRequiredTemplate,
         @NotNull Boolean replyOnDuplicate,
-        @NotNull Boolean enableHyperlinkFallback
+        @NotNull Boolean enableHyperlinkFallback,
+        @Positive int seedGiftsCount
 ) {
 
     public long effectivePublicGroupId() {
         return publicGroupId > 0 ? publicGroupId : groupId;
+    }
+
+    public boolean longPollEnabled() {
+        return eventSource == VkEventSource.LONG_POLL || eventSource == VkEventSource.BOTH;
     }
 
     public Map<Long, String> trackedPostsMap() {
@@ -58,4 +70,3 @@ public record VkBotProperties(
         return Collections.unmodifiableMap(result);
     }
 }
-

@@ -8,7 +8,17 @@ spring:
     init:
       mode: always
 
+google:
+  sheets:
+    enabled: false
+    spreadsheet-id:
+    sheet-name: Голоса
+    credentials-path:
+    application-name: vk-comment-bot-test
+    api-base-url: http://localhost:1
+
 vk:
+  event-source: CALLBACK
   group-id: 12345
   access-token: test-token
   confirmation-code: confirm-me
@@ -16,10 +26,17 @@ vk:
   public-group-id: 236069574
   api-base-url: http://localhost:1
   api-version: 5.199
+  long-poll-wait-seconds: 1
   write-link-base: https://vk.com/write-236069574
   tracked-posts: 101=Арт-стол Бурятии
   reply-template: 'Спасибо! Ваш голос принят за "{artTable}". Чтобы получить номер подарка, напишите боту: {link}'
   duplicate-template: 'Ваш голос уже был принят ранее. Если нужно, напишите боту: {link}'
   fallback-template: 'Спасибо! Ваш голос принят за "{artTable}". Чтобы получить номер подарка, откройте {groupMention} и напишите нам в сообщения.'
+  gift-issued-template: 'Спасибо! Ваш номер подарка: #{giftNumber}. Подарок: {giftName}. Покажите это сообщение на стойке выдачи.'
+  gift-repeat-template: 'Ваш номер подарка уже выдан: #{giftNumber}. Подарок: {giftName}. Покажите это сообщение на стойке выдачи.'
+  comment-required-template: 'Сначала оставьте комментарий под конкурсным постом арт-стола, а потом напишите сюда снова.'
+  gifts-exhausted-template: 'Спасибо за участие! Все подарки уже закончились, но ваш голос засчитан.'
+  subscription-required-template: 'Чтобы получить подарок, подпишитесь на сообщество и нажмите кнопку "Я подписался".'
   reply-on-duplicate: false
   enable-hyperlink-fallback: true
+  seed-gifts-count: 12

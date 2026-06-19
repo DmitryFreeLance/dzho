@@ -4,7 +4,6 @@ import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +14,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import ru.dzho.vkbot.model.vk.VkIncomingMessage;
+import ru.dzho.vkbot.service.MessageService;
 
 import java.io.IOException;
 
@@ -45,6 +46,9 @@ class VkCallbackControllerTest {
 
     @Autowired
     private JdbcClient jdbcClient;
+
+    @Autowired
+    private MessageService messageService;
 
     @AfterAll
     static void afterAll() throws IOException {
@@ -291,5 +295,179 @@ class VkCallbackControllerTest {
                 .query(String.class)
                 .single();
         assertThat(replyMode).isEqualTo("FALLBACK_NO_LINK");
+    }
+
+    @Test
+    void shouldAssignGiftWhenUserWritesAfterAcceptedComment() throws Exception {
+        mockWebServer.enqueue(new MockResponse()
+                .setHeader("Content-Type", "application/json")
+                .setBody("""
+                        {
+                          "response": [
+                            {
+                              "id": 1234,
+                              "first_name": "Мария",
+                              "last_name": "Орлова",
+                              "screen_name": "maria.test",
+                              "photo_200": "https://example.com/maria.jpg"
+                            }
+                          ]
+                        }
+                        """));
+        mockWebServer.enqueue(new MockResponse()
+                .setHeader("Content-Type", "application/json")
+                .setBody("""
+                        {
+                          "response": {
+                            "comment_id": 9393
+                          }
+                        }
+                        """));
+
+        mockMvc.perform(post("/vk/callback")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "type": "wall_reply_new",
+                                  "group_id": 12345,
+                                  "secret": "callback-secret",
+                                  "object": {
+                                    "id": 8001,
+                                    "from_id": 1234,
+                                    "owner_id": -12345,
+                                    "post_id": 101,
+                                    "date": 1719900000,
+                                    "text": "Участвую"
+                                  }
+                                }
+                                """))
+                .andExpect(status().isOk());
+
+        mockWebServer.takeRequest();
+        mockWebServer.takeRequest();
+
+        mockWebServer.enqueue(new MockResponse()
+                .setHeader("Content-Type", "application/json")
+                .setBody("""
+                        {
+                          "response": 1
+                        }
+                        """));
+        mockWebServer.enqueue(new MockResponse()
+                .setHeader("Content-Type", "application/json")
+                .setBody("""
+                        {
+                          "response": 55501
+                        }
+                        }
+                        """));
+
+        messageService.processIncomingMessage(new VkIncomingMessage(9001, 1234, 1234, "Подарок"));
+
+        RecordedRequest isMemberRequest = mockWebServer.takeRequest();
+        assertThat(isMemberRequest.getPath()).isEqualTo("/method/groups.isMember");
+
+        RecordedRequest giftMessage = mockWebServer.takeRequest();
+        assertThat(giftMessage.getPath()).isEqualTo("/method/messages.send");
+        String giftBody = giftMessage.getBody().readUtf8();
+        assertThat(giftBody).contains("peer_id=1234");
+        assertThat(giftBody).contains("%231");
+        assertThat(giftBody).contains("%D0%A1%D1%82%D0%B8%D0%BA%D0%B5%D1%80-%D0%BF%D0%B0%D0%BA");
+        assertThat(giftBody).contains("keyboard=%7B%22buttons%22%3A%5B%5D%7D");
+
+        Long giftNumber = jdbcClient.sql("SELECT gift_number FROM participants WHERE user_id = 1234")
+                .query(Long.class)
+                .single();
+        assertThat(giftNumber).isEqualTo(1L);
+
+        String giftStatus = jdbcClient.sql("SELECT status FROM gifts WHERE gift_number = 1")
+                .query(String.class)
+                .single();
+        assertThat(giftStatus).isEqualTo("ASSIGNED");
+    }
+
+    @Test
+    void shouldRequireSubscriptionBeforeGift() throws Exception {
+        mockWebServer.enqueue(new MockResponse()
+                .setHeader("Content-Type", "application/json")
+                .setBody("""
+                        {
+                          "response": [
+                            {
+                              "id": 2234,
+                              "first_name": "Павел",
+                              "last_name": "Тестов",
+                              "screen_name": "pavel.test",
+                              "photo_200": "https://example.com/pavel.jpg"
+                            }
+                          ]
+                        }
+                        """));
+        mockWebServer.enqueue(new MockResponse()
+                .setHeader("Content-Type", "application/json")
+                .setBody("""
+                        {
+                          "response": {
+                            "comment_id": 9494
+                          }
+                        }
+                        """));
+
+        mockMvc.perform(post("/vk/callback")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "type": "wall_reply_new",
+                                  "group_id": 12345,
+                                  "secret": "callback-secret",
+                                  "object": {
+                                    "id": 8101,
+                                    "from_id": 2234,
+                                    "owner_id": -12345,
+                                    "post_id": 101,
+                                    "date": 1719900000,
+                                    "text": "Участвую в розыгрыше"
+                                  }
+                                }
+                                """))
+                .andExpect(status().isOk());
+
+        mockWebServer.takeRequest();
+        mockWebServer.takeRequest();
+
+        mockWebServer.enqueue(new MockResponse()
+                .setHeader("Content-Type", "application/json")
+                .setBody("""
+                        {
+                          "response": 0
+                        }
+                        """));
+        mockWebServer.enqueue(new MockResponse()
+                .setHeader("Content-Type", "application/json")
+                .setBody("""
+                        {
+                          "response": 55512
+                        }
+                        """));
+
+        messageService.processIncomingMessage(new VkIncomingMessage(9101, 2234, 2234, "Подарок"));
+
+        RecordedRequest isMemberRequest = mockWebServer.takeRequest();
+        assertThat(isMemberRequest.getPath()).isEqualTo("/method/groups.isMember");
+
+        RecordedRequest subscriptionMessage = mockWebServer.takeRequest();
+        assertThat(subscriptionMessage.getPath()).isEqualTo("/method/messages.send");
+        String subscriptionBody = subscriptionMessage.getBody().readUtf8();
+        assertThat(subscriptionBody).contains("peer_id=2234");
+        assertThat(subscriptionBody).contains("keyboard=");
+        assertThat(subscriptionBody).contains("%D0%9F%D0%BE%D0%B4%D0%BF%D0%B8%D1%81%D0%B0%D1%82%D1%8C");
+        assertThat(subscriptionBody).contains("%D0%AF+%D0%BF%D0%BE%D0%B4%D0%BF%D0%B8%D1%81%D0%B0%D0%BB%D1%81%D1%8F");
+        assertThat(subscriptionBody).contains("https%3A%2F%2Fvk.com%2Fclub236069574");
+        assertThat(subscriptionBody).contains("%D0%A7%D1%82%D0%BE%D0%B1%D1%8B+%D0%BF%D0%BE%D0%BB%D1%83%D1%87%D0%B8%D1%82%D1%8C+%D0%BF%D0%BE%D0%B4%D0%B0%D1%80%D0%BE%D0%BA");
+
+        Long giftCount = jdbcClient.sql("SELECT COUNT(*) FROM gifts WHERE assigned_user_id = 2234")
+                .query(Long.class)
+                .single();
+        assertThat(giftCount).isEqualTo(0L);
     }
 }

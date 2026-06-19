@@ -18,8 +18,11 @@ public record ParticipantRecord(
         Long firstReplyCommentId,
         String replyLink,
         String replyMode,
+        Long giftNumber,
+        String giftName,
+        OffsetDateTime giftAssignedAt,
+        String giftStatus,
         long lastSeenCommentId,
         OffsetDateTime createdAt
 ) {
 }
-

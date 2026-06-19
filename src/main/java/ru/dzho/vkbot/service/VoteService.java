@@ -33,17 +33,20 @@ public class VoteService {
     private final VkApiClient vkApiClient;
     private final ParticipantRepository participantRepository;
     private final CommentEventRepository commentEventRepository;
+    private final GoogleSheetsSyncService googleSheetsSyncService;
 
     public VoteService(
             VkBotProperties properties,
             VkApiClient vkApiClient,
             ParticipantRepository participantRepository,
-            CommentEventRepository commentEventRepository
+            CommentEventRepository commentEventRepository,
+            GoogleSheetsSyncService googleSheetsSyncService
     ) {
         this.properties = properties;
         this.vkApiClient = vkApiClient;
         this.participantRepository = participantRepository;
         this.commentEventRepository = commentEventRepository;
+        this.googleSheetsSyncService = googleSheetsSyncService;
     }
 
     public void processWallReply(WallReplyObject reply) {
@@ -126,7 +129,7 @@ public class VoteService {
         String fallbackMessage = TemplateRenderer.render(properties.fallbackTemplate(), templateValues);
         VkCommentReplyResult replyResult = sendReply(reply, acceptedMessage, fallbackMessage);
 
-        participantRepository.insert(new ParticipantRecord(
+        ParticipantRecord participant = new ParticipantRecord(
                 reply.fromId(),
                 profile.firstName(),
                 profile.lastName(),
@@ -142,9 +145,15 @@ public class VoteService {
                 replyResult.commentId(),
                 link,
                 replyResult.mode(),
+                null,
+                null,
+                null,
+                "NOT_ASSIGNED",
                 reply.id(),
                 receivedAt
-        ));
+        );
+        participantRepository.insert(participant);
+        googleSheetsSyncService.syncParticipant(participant);
 
         commentEventRepository.updateStatus(reply.id(), CommentEventStatus.ACCEPTED, "Accepted", replyResult.commentId());
     }

@@ -23,7 +23,17 @@ logging:
     root: INFO
     ru.dzho.vkbot: INFO
 
+google:
+  sheets:
+    enabled: ${GOOGLE_SHEETS_ENABLED:false}
+    spreadsheet-id: ${GOOGLE_SHEETS_SPREADSHEET_ID:}
+    sheet-name: ${GOOGLE_SHEETS_SHEET_NAME:Голоса}
+    credentials-path: ${GOOGLE_SHEETS_CREDENTIALS_PATH:${GOOGLE_APPLICATION_CREDENTIALS:}}
+    application-name: ${GOOGLE_SHEETS_APPLICATION_NAME:vk-comment-bot}
+    api-base-url: ${GOOGLE_SHEETS_API_BASE_URL:https://sheets.googleapis.com}
+
 vk:
+  event-source: ${VK_EVENT_SOURCE:LONG_POLL}
   group-id: ${VK_GROUP_ID:0}
   access-token: ${VK_ACCESS_TOKEN:}
   confirmation-code: ${VK_CONFIRMATION_CODE:}
@@ -31,10 +41,17 @@ vk:
   public-group-id: ${VK_PUBLIC_GROUP_ID:${VK_GROUP_ID:0}}
   api-base-url: ${VK_API_BASE_URL:https://api.vk.com}
   api-version: ${VK_API_VERSION:5.199}
+  long-poll-wait-seconds: ${VK_LONG_POLL_WAIT_SECONDS:25}
   write-link-base: ${VK_WRITE_LINK_BASE:https://vk.com/write-236069574}
   tracked-posts: ${VK_TRACKED_POSTS:}
   reply-template: '${VK_REPLY_TEMPLATE:Спасибо! Ваш голос принят за "{artTable}". Чтобы получить номер подарка, напишите боту: {link}}'
   duplicate-template: '${VK_DUPLICATE_TEMPLATE:Ваш голос уже был принят ранее. Если нужно, напишите боту: {link}}'
   fallback-template: '${VK_FALLBACK_TEMPLATE:Спасибо! Ваш голос принят за "{artTable}". Чтобы получить номер подарка, откройте {groupMention} и напишите нам в сообщения.}'
+  gift-issued-template: '${VK_GIFT_ISSUED_TEMPLATE:Спасибо! Ваш номер подарка: #{giftNumber}. Подарок: {giftName}. Покажите это сообщение на стойке выдачи.}'
+  gift-repeat-template: '${VK_GIFT_REPEAT_TEMPLATE:Ваш номер подарка уже выдан: #{giftNumber}. Подарок: {giftName}. Покажите это сообщение на стойке выдачи.}'
+  comment-required-template: '${VK_COMMENT_REQUIRED_TEMPLATE:Сначала оставьте комментарий под конкурсным постом арт-стола, а потом напишите сюда снова.}'
+  gifts-exhausted-template: '${VK_GIFTS_EXHAUSTED_TEMPLATE:Спасибо за участие! Все подарки уже закончились, но ваш голос засчитан.}'
+  subscription-required-template: '${VK_SUBSCRIPTION_REQUIRED_TEMPLATE:Чтобы получить подарок, подпишитесь на сообщество и нажмите кнопку "Я подписался".}'
   reply-on-duplicate: ${VK_REPLY_ON_DUPLICATE:false}
   enable-hyperlink-fallback: ${VK_ENABLE_HYPERLINK_FALLBACK:true}
+  seed-gifts-count: ${VK_SEED_GIFTS_COUNT:150}

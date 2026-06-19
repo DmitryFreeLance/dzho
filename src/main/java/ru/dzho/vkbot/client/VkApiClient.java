@@ -4,11 +4,15 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
+import ru.dzho.vkbot.model.vk.VkLongPollServer;
 import ru.dzho.vkbot.config.VkBotProperties;
 import ru.dzho.vkbot.model.vk.VkUserProfile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
+import java.net.HttpURLConnection;
+import java.net.SocketTimeoutException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -17,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.StringJoiner;
 
 @Component
@@ -78,6 +83,54 @@ public class VkApiClient {
         return null;
     }
 
+    public VkLongPollServer getLongPollServer() {
+        JsonNode response = call("groups.getLongPollServer", Map.of(
+                "group_id", Long.toString(properties.groupId())
+        ));
+        return new VkLongPollServer(
+                response.path("key").asText(),
+                response.path("server").asText(),
+                response.path("ts").asText()
+        );
+    }
+
+    public JsonNode checkLongPoll(VkLongPollServer longPollServer) {
+        URI uri = UriComponentsBuilder.fromUriString(longPollServer.server())
+                .queryParam("act", "a_check")
+                .queryParam("key", longPollServer.key())
+                .queryParam("ts", longPollServer.ts())
+                .queryParam("wait", properties.longPollWaitSeconds())
+                .build(true)
+                .toUri();
+
+        return doLongPollGet(uri);
+    }
+
+    public Long sendMessage(long peerId, String message) {
+        return sendMessage(peerId, message, null);
+    }
+
+    public Long sendMessage(long peerId, String message, String keyboard) {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("peer_id", Long.toString(peerId));
+        params.put("random_id", Integer.toString(ThreadLocalRandom.current().nextInt(1, Integer.MAX_VALUE)));
+        params.put("message", message);
+        if (keyboard != null && !keyboard.isBlank()) {
+            params.put("keyboard", keyboard);
+        }
+
+        JsonNode response = call("messages.send", params);
+        return response.isIntegralNumber() ? response.asLong() : null;
+    }
+
+    public boolean isGroupMember(long userId) {
+        JsonNode response = call("groups.isMember", Map.of(
+                "group_id", Long.toString(properties.groupId()),
+                "user_id", Long.toString(userId)
+        ));
+        return response.asInt(0) == 1;
+    }
+
     private JsonNode call(String method, Map<String, String> methodParams) {
         Map<String, String> params = new LinkedHashMap<>(methodParams);
         params.put("access_token", properties.accessToken());
@@ -95,6 +148,41 @@ public class VkApiClient {
                 .POST(HttpRequest.BodyPublishers.ofString(formBody, StandardCharsets.UTF_8))
                 .build();
 
+        return doRequest(request, method);
+    }
+
+    private JsonNode doLongPollGet(URI uri) {
+        HttpURLConnection connection = null;
+        try {
+            connection = (HttpURLConnection) uri.toURL().openConnection();
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(10_000);
+            connection.setReadTimeout((properties.longPollWaitSeconds() + 15) * 1_000);
+            connection.setRequestProperty("Accept", "application/json");
+            connection.setRequestProperty("User-Agent", "vk-comment-bot");
+
+            int status = connection.getResponseCode();
+            InputStream stream = status >= 200 && status < 300
+                    ? connection.getInputStream()
+                    : connection.getErrorStream();
+            String body = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+            if (status < 200 || status >= 300) {
+                throw new IllegalStateException("VK API request failed for method longpoll.check with HTTP " + status + ": " + body);
+            }
+
+            return objectMapper.readTree(body);
+        } catch (SocketTimeoutException ex) {
+            throw new IllegalStateException("VK API timeout for method longpoll.check", ex);
+        } catch (IOException ex) {
+            throw new IllegalStateException("VK API request failed for method longpoll.check", ex);
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
+    private JsonNode doRequest(HttpRequest request, String method) {
         try {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             JsonNode root = objectMapper.readTree(response.body());
