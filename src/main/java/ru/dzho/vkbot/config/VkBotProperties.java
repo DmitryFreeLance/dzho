@@ -22,6 +22,7 @@ public record VkBotProperties(
         @NotBlank String apiBaseUrl,
         @NotBlank String apiVersion,
         @Positive int longPollWaitSeconds,
+        String giftCatalogPath,
         @NotBlank String writeLinkBase,
         String trackedPosts,
         @NotBlank String replyTemplate,
@@ -43,6 +44,13 @@ public record VkBotProperties(
 
     public boolean longPollEnabled() {
         return eventSource == VkEventSource.LONG_POLL || eventSource == VkEventSource.BOTH;
+    }
+
+    public String effectiveGiftCatalogPath() {
+        if (giftCatalogPath == null || giftCatalogPath.isBlank()) {
+            return null;
+        }
+        return giftCatalogPath.trim();
     }
 
     public Map<Long, String> trackedPostsMap() {

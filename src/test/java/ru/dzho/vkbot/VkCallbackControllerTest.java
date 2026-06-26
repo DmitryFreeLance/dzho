@@ -359,7 +359,6 @@ class VkCallbackControllerTest {
                         {
                           "response": 55501
                         }
-                        }
                         """));
 
         messageService.processIncomingMessage(new VkIncomingMessage(9001, 1234, 1234, "Подарок"));
@@ -371,8 +370,8 @@ class VkCallbackControllerTest {
         assertThat(giftMessage.getPath()).isEqualTo("/method/messages.send");
         String giftBody = giftMessage.getBody().readUtf8();
         assertThat(giftBody).contains("peer_id=1234");
-        assertThat(giftBody).contains("%231");
-        assertThat(giftBody).contains("%D0%A1%D1%82%D0%B8%D0%BA%D0%B5%D1%80-%D0%BF%D0%B0%D0%BA");
+        assertThat(giftBody).contains("%E2%84%96+1");
+        assertThat(giftBody).contains("%D0%93%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%21+%D0%92%D1%8B+%D0%BF%D0%BE%D0%B4%D0%BF%D0%B8%D1%81%D0%B0%D0%BB%D0%B8%D1%81%D1%8C%21");
         assertThat(giftBody).contains("keyboard=%7B%22buttons%22%3A%5B%5D%7D");
 
         Long giftNumber = jdbcClient.sql("SELECT gift_number FROM participants WHERE user_id = 1234")
